@@ -252,3 +252,51 @@ div.status {
 .form-item .commerce-pos-hidden-element {
   display: none;
 }
+
+// Styling for the out of stock override wrapper.
+#out-of-stock-override-confirm-wrapper {
+  width: 500px;
+  height: 150px;
+  background-color: #fff;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: auto;
+  text-align: center;
+  padding: 20px;
+  border-radius: 2px;
+  z-index: 20;
+  border: 5px solid #337ab7;
+
+  #out-of-stock-override-confirm-question {
+    text-align: left;
+    background-repeat: no-repeat;
+    padding-left: 35px;
+    margin-bottom: 20px;
+    background-position: 7px 10px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+
+  input {
+    margin-left: 10px;
+    margin-right: 10px;
+    color: red !important;
+
+    &last-child {
+      color: #5cb85c !important;
+    }
+  }
+}
+
+#out-of-stock-override-confirm-cover {
+  position: fixed;
+  top: 0;
+  left: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 10;
+  width: 100%;
+  height: 100%;
+}
