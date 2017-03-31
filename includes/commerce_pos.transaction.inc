@@ -197,62 +197,60 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
 
       $line_item_element = &$form['line_items'][$line_item_id];
 
-      // Determine if the product has sufficient stock if it was enabled for
-      // this product.
-      $no_stock = FALSE;
-      if (isset($line_item_wrapper->commerce_product->value()->commerce_stock) &&
-        $line_item_wrapper->commerce_product->value()->commerce_stock['und'][0]['value'] < 1
-      ) {
-        $no_stock = TRUE;
-      }
+      // If commerce_stock is enabled and enabled for this product type as well,
+      // make sure we inform the user when a product is out of stock.
+      if (module_exists('commerce_stock') && commerce_ss_product_type_enabled($line_item_wrapper->commerce_product->value()->type)) {
+        $out_of_stock = FALSE;
+        // Let's check the stock of this product by calling our hook that checks
+        // the product's stock.
+        // Call all modules that implement the hook, and let them make changes
+        // to $stock.
+        $stock = (int) module_invoke_all('commerce_stock_check_item_stock_alter', $line_item_wrapper->commerce_product->value())[0];
+        // We set out_of_stock to TRUE only if it's the clicked product and the
+        // same product has not already been added.
+        if ($stock < 1 && isset($form_state['triggering_element']) && $form_state['triggering_element']['#value'] ==  $line_item_wrapper->line_item_label->value()
+          && !isset($form_state['values']['line_items'][$line_item_id])) {
+          $out_of_stock = TRUE;
+        }
 
-      // If the user has clicked on the 'Override' button (see below), set that
-      // in the form state, so we don't ask the user the same question again
-      // for the same product.
-      if (isset($form_state['triggering_element']) && $form_state['triggering_element']['#name'] == 'override_button') {
-        $form_state['overridden_ine_items'][$line_item_id] = TRUE;
-      }
+        // If the clicked product has no stock, display a message and buttons to
+        // override or remove the product.
+        if ($out_of_stock) {
+          // Inform the user about the out of stock issue.
+          $form['out_of_stock_override_confirm_question'] = array(
+            '#prefix' => '<div id="out-of-stock-override-confirm-wrapper">',
+            '#markup' => '<div id="out-of-stock-override-confirm-question" class="warning">'
+              . t('This product does not have any stock. Do you still want to add this item to the order?')
+              . '</div>',
+          );
 
-      // If this product has no stock, display a message and buttons to override
-      // or remove the product. Do this only if the item hasn't already been
-      // overridden.
-      if ($no_stock && (!isset($form_state['triggering_element']) ||
-          (isset($form_state['triggering_element']) && !isset($form_state['overridden_ine_items'][$line_item_id]) ||
-            $form_state['overridden_ine_items'][$line_item_id] == FALSE))
-      ) {
+          // Display a override button to proceed with adding the item to the
+          // order.
+          $form['out_of_stock_override_confirm_yes_button'] = array(
+            '#type' => 'button',
+            '#value' => t('Override'),
+            '#ajax' => array(
+              'callback' => '_commerce_pos_override_confirm_callback',
+              'wrapper' => 'out-of-stock-override-confirm-wrapper',
+              'method' => 'replace'
+            ),
+            '#line_item_id' => $line_item_id,
+            '#name' => 'override_button',
+            '#validate' => array('_commerce_pos_override_confirm_validate'),
+          );
 
-        // Inform the user about the out of stock issue.
-        $form['out_of_stock_override_confirm_question'] = array(
-          '#prefix' => '<div id="out-of-stock-override-confirm-wrapper">',
-          '#markup' => '<div id="out-of-stock-override-confirm-question" class="warning">'
-            . t('This product does not have any stock. Do you still want to add this item to the order?')
-            . '</div>',
-        );
-
-        // Display a override button to proceed with adding the item to the
-        // order.
-        $form['out_of_stock_override_confirm_yes_button'] = array(
-          '#type' => 'button',
-          '#value' => t('Override'),
-          '#ajax' => array(
-            'callback' => '_commerce_pos_override_confirm_callback',
-            'wrapper' => 'out-of-stock-override-confirm-wrapper',
-            'method' => 'replace'
-          ),
-          '#name' => 'override_button',
-        );
-
-        // Display a remove button to remove the item from the order.
-        // We're just copying the same behavior for the generic 'remove' button.
-        $form['out_of_stock_override_confirm_no_button'] = array(
-          '#type' => 'submit',
-          '#value' => 'Remove',
-          '#name' => 'line-item-' . $line_item_id . '-remove',
-          '#submit' => array('commerce_pos_transaction_line_item_remove_submit'),
-          '#line_item_id' => $line_item_id,
-          '#ajax' => $wrapper_ajax,
-          '#suffix' => '</div><div id="out-of-stock-override-confirm-cover"></div>',
-        );
+          // Display a remove button to remove the item from the order.
+          // We're just copying the same behavior for the generic 'remove' button.
+          $form['out_of_stock_override_confirm_no_button'] = array(
+            '#type' => 'submit',
+            '#value' => 'Remove',
+            '#name' => 'line-item-' . $line_item_id . '-remove',
+            '#submit' => array('commerce_pos_transaction_line_item_remove_submit'),
+            '#line_item_id' => $line_item_id,
+            '#ajax' => $wrapper_ajax,
+            '#suffix' => '</div><div id="out-of-stock-override-confirm-cover"></div>',
+          );
+        }
       }
 
       $line_item_element['line_item_row_wrapper_open'] = array(
@@ -289,6 +287,13 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
       else {
         $line_item_element['sku'] = array(
           '#markup' => '<br />' . $line_item_wrapper->commerce_product->sku->value(),
+        );
+      }
+
+      // Display out of stock overridden notice.
+      if ($out_of_stock || isset($form_state['out_of_stock_overridden_line_items'][$line_item_id])) {
+        $line_item_element['out_of_stock_overridden'] = array(
+          '#markup' => '<div class="out-of-stock-overridden-notice">' . t('Out of Stock: Overridden') . '</div>',
         );
       }
 
@@ -781,3 +786,12 @@ function _commerce_pos_override_confirm_callback($form, &$form_state) {
 
   return array('#type' => 'ajax', '#commands' => $commands);
 }
+
+/**
+ * Validate function for the out of stock 'Override' button.
+ */
+function _commerce_pos_override_confirm_validate($form, &$form_state) {
+  // Add the item to the overridden items list.
+  $form_state['out_of_stock_overridden_line_items'][$form_state['triggering_element']['#line_item_id']] = $form_state['triggering_element']['#line_item_id'];
+}
+
