@@ -82,10 +82,6 @@
   button:hover, input:hover, button:focus, input:focus {
     background: #f9f9f9;
   }
-
-  .out-of-stock-overridden-notice {
-    color: red;
-  }
 }
 
 //
@@ -475,5 +471,12 @@
       margin-left: 54%;
       clear: both;
     }
+  }
+}
+
+// Styling for out of stock overridden notices.
+#commerce-pos-sale-wrapper {
+  .out-of-stock-overridden-notice {
+    color: red;
   }
 }
