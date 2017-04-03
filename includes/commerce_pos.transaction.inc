@@ -199,7 +199,7 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
 
       // If commerce_stock is enabled and enabled for this product type as well,
       // make sure we inform the user when a product is out of stock.
-      if (module_exists('commerce_stock') && commerce_ss_product_type_enabled($line_item_wrapper->commerce_product->value()->type)) {
+      if (!$return && module_exists('commerce_stock') && commerce_ss_product_type_enabled($line_item_wrapper->commerce_product->value()->type)) {
         $out_of_stock = FALSE;
         // Let's check the stock of this product by calling our hook that checks
         // the product's stock.
