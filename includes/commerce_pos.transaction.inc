@@ -788,7 +788,6 @@ function _commerce_pos_override_confirm_callback($form, &$form_state) {
 
   // Remove the entire wrapper and cover.
   $commands[] = ajax_command_replace('#commerce-pos-form-modal-overlay', '');
-  $commands[] = ajax_command_replace('#commerce-pos-form-modal-modal', '');
 
   return array('#type' => 'ajax', '#commands' => $commands);
 }
