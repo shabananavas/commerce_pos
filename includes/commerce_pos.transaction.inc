@@ -122,6 +122,22 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
     );
   }
 
+  $products_not_configured = FALSE;
+  if (empty(variable_get('commerce_pos_available_products', array('product')))) {
+    $products_not_configured = TRUE;
+  }
+
+  if ($products_not_configured) {
+    $form['products_not_configured'] = array(
+      '#markup' => '<div id="commerce-pos-products-not-configured-message" class="warning">'
+        . t('Allowed product types have not been configured for POS transactions.
+        Click !here to add product types.', array(
+          '!here' => l('here', 'admin/commerce/config/pos/settings')
+        ))
+        . '</div>',
+    );
+  }
+
   if (!empty($form_state['lookup_result'])) {
     $form['product_results'] = array(
       '#type' => 'container',

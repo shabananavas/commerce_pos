@@ -58,6 +58,12 @@
     background: #fff;
     box-sizing: border-box;
     vertical-align: baseline;
+
+    &.show-ajax-throbber {
+      background-image: url(/misc/throbber.gif) !important;
+      background-repeat: no-repeat !important;
+      background-position: right -13px !important;
+    }
   }
 
   button, input[type="reset"],
@@ -471,5 +477,20 @@
       margin-left: 54%;
       clear: both;
     }
+  }
+}
+
+#commerce-pos-product-no-results-message {
+  text-align: center;
+}
+
+#commerce-pos-products-not-configured-message {
+  padding: 10px;
+  padding-left: 30px;
+  margin-bottom: 10px;
+
+  &.warning {
+    background-repeat: no-repeat;
+    background-position: 5px 8px;
   }
 }
