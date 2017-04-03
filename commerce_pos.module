@@ -1275,3 +1275,12 @@ function commerce_pos_round_nearest(array $amount, $step) {
 
   return $decimal - $difference + $step;
 }
+
+/**
+ * Implements hook_commerce_stock_check_item_stock_alter().
+ */
+function commerce_pos_commerce_stock_check_item_stock_alter($product) {
+  // TODO: There has got to be a better way to check stock as we need to take
+  // into account stock rules etc.
+  return $product->commerce_stock[LANGUAGE_NONE][0]['value'];
+}
