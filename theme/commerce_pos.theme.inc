@@ -36,6 +36,8 @@ function commerce_pos_preprocess_commerce_pos_product_result(&$variables) {
   }
 
   $variables['stock'] = $stock !== NULL ? t('@count in stock', array('@count' => $stock)) : t('stock unknown');
+
+  dpm($variables);
 }
 
 /**
