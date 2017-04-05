@@ -154,7 +154,7 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
       '#type' => 'textfield',
       '#title' => '',
       '#size' => 60,
-      '#description' => t('Search by order ID to load an order.'),
+      '#description' => t('Search by order ID to load the items in an order.'),
       '#attributes' => array(
         'placeholder' => t('Order Search'),
       ),
@@ -669,7 +669,7 @@ function commerce_pos_transaction_ajax_check(&$form, &$form_state) {
 
           break;
 
-        case 'return-item-close':
+        case 'return-items-add':
           // Go through the return item checkboxes and get the items from the
           // order that were selected to be returned and add them to the
           // return transaction.
@@ -817,7 +817,7 @@ function commerce_pos_return_select_item_popup(&$form, &$form_state, $order) {
         // Make sure we display the actual price paid to account for any
         // discounts the user might have received.
         $markup .= '<div class="commerce-pos-return-product-price-paid">'
-          . t('Price Paid: @price', array('@price' => $line_item_wrapper->commerce_unit_price->value()['amount']))
+          . t('Price Paid: @price', array('@price' => commerce_currency_format($line_item_wrapper->commerce_unit_price->value()['amount'], $line_item_wrapper->commerce_unit_price->value()['currency_code'])))
           . '</div></div>';
 
         // Add the markup to the checkboxes options to add below.
@@ -840,14 +840,14 @@ function commerce_pos_return_select_item_popup(&$form, &$form_state, $order) {
 
   // Add our close button which will add all the items that were selected to
   // be returned to the return transaction.
-  $form['commerce_pos_return_select_item_modal']['modal']['close'] = array(
+  $form['commerce_pos_return_select_item_modal']['modal']['add'] = array(
     '#type' => 'button',
-    '#value' => t('Close'),
+    '#value' => t('Add'),
     '#ajax' => array(
       'callback' => 'commerce_pos_transaction_wrapper_js',
       'wrapper' => 'commerce-pos-sale-wrapper',
     ),
-    '#element_key' => 'return-item-close',
+    '#element_key' => 'return-items-add',
     '#products' => $products,
     '#weight' => 1,
   );

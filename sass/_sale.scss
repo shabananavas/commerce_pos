@@ -481,35 +481,38 @@
       display: inline-block;
     }
 
-    #edit-order-search-search {
+    .form-submit {
       display: inline-block;
       position: relative;
       top: -28px;
     }
   }
-}
 
-#commerce-pos-form-modal-modal {
-  height: auto !important;
-}
+  #commerce-pos-form-modal-modal {
+    height: auto !important;
+  }
 
-#edit-return-items {
-  .form-type-checkbox {
-    margin: 5px;
+  .form-item-return-items {
+    .form-type-checkbox {
+      margin: 5px;
 
-    .commerce-pos-return-product-image, .commerce-pos-return-product-info {
-      display: inline-block;
-      margin: 0px 20px;
+      .commerce-pos-return-product-image, .commerce-pos-return-product-info {
+        display: inline-block;
+        margin: 0px 20px;
+        vertical-align: text-top;
 
-      &.commerce-pos-return-product-info {
-        position: relative;
-        top: -15px;
-        text-align: left;
+        &.commerce-pos-return-product-info {
+          position: relative;
+          vertical-align: top;
+          text-align: left;
+          width: 40%;
 
-        .commerce-pos-return-product-title {
-          font-weight: bold;
+          .commerce-pos-return-product-title {
+            font-weight: bold;
+          }
         }
       }
     }
   }
 }
+
