@@ -205,8 +205,14 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
         // the product's stock.
         // Call all modules that implement the hook, and let them make changes
         // to $stock.
-        $stock = (int) module_invoke_all('commerce_stock_check_item_stock_alter', $line_item_wrapper->commerce_product->value())[0];
-        if ($stock < 1) {
+        $stock = module_invoke_all('commerce_stock_check_item_stock_alter', $line_item_wrapper->commerce_product->value());
+        // The above function call returns an array.
+        if (is_array($stock)) {
+          $stock = $stock[0];
+        }
+
+
+        if (is_numeric($stock) && $stock < 1) {
           $out_of_stock = TRUE;
           // If the form has been reloaded, add the existing out of stock items
           // to our array which keeps track of the overridden items so that we
