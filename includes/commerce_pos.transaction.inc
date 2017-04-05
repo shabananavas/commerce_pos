@@ -670,9 +670,10 @@ function commerce_pos_transaction_ajax_check(&$form, &$form_state) {
           // return transaction.
           foreach ($form_state['values']['return_items'] as $key => $value) {
             if (!empty($value)) {
-              $transaction->addProduct($form_state['triggering_element']['#products'][$value]);
-              // TODO: Figure out a clean way to set the price of the item as
-              // the user might have paid a discounted price.
+              // We're sending the actual price the customer paid to the
+              // addProduct() function, so that price will be used in the
+              // transaction instead of the product price.
+              $transaction->addProduct($form_state['triggering_element']['#line_items'][$value]->commerce_product->value(), 1, TRUE, $form_state['triggering_element']['#line_items'][$value]->commerce_unit_price->value()['amount']);
             }
           }
 
@@ -786,7 +787,7 @@ function commerce_pos_return_select_item_popup(&$form, &$form_state, $order) {
 
   // Initialize variables.
   $options = array();
-  $products = array();
+  $line_items = array();
 
   // Go through each item in the order and generate the html for the items
   // display.
@@ -818,9 +819,9 @@ function commerce_pos_return_select_item_popup(&$form, &$form_state, $order) {
         // Add the markup to the checkboxes options to add below.
         $options[$product_sku] = $markup;
 
-        // Add the products indexed by sku to the products array so we can add
+        // Add the line items indexed by sku to the products array so we can add
         // it to our close element.
-        $products[$product_sku] = $product;
+        $line_items[$product_sku] = $line_item_wrapper;
       }
     }
   }
@@ -843,7 +844,7 @@ function commerce_pos_return_select_item_popup(&$form, &$form_state, $order) {
       'wrapper' => 'commerce-pos-sale-wrapper',
     ),
     '#element_key' => 'return-items-add',
-    '#products' => $products,
+    '#line_items' => $line_items,
     '#weight' => 1,
   );
 }
