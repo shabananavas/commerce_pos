@@ -268,11 +268,6 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
       );
 
       $base_price = commerce_price_component_load($line_item_wrapper->commerce_unit_price->value(), 'base_price');
-      // TODO: Adjust the price so that we get the real amount paid as the user
-      // might have gotten a discount.
-      /*if (isset($form_state['adjust_price'][$line_item_wrapper->line_item_label->value()])) {
-        $base_price[0]['price']['amount'] = $form_state['adjust_price'][$line_item_wrapper->line_item_label->value()];
-      }*/
 
       $currency = commerce_currency_load();
 
