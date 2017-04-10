@@ -149,12 +149,13 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
       '#type' => 'container',
       '#prefix' => '<div id="commerce-pos-return-order-search">',
       '#tree' => TRUE,
+      '#suffix' => '</div>',
     );
     $form['order_search']['input'] = array(
       '#type' => 'textfield',
       '#title' => '',
       '#size' => 60,
-      '#description' => t('Search by order ID to load the items in an order.'),
+      '#description' => t('Search by order ID to load the items in an order.<br>(Note: This does not support searching for Order Number.)'),
       '#attributes' => array(
         'placeholder' => t('Order Search'),
       ),
@@ -165,9 +166,9 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
       '#type' => 'button',
       '#value' => t('Go'),
       '#ajax' => $wrapper_ajax,
-      '#suffix' => '</div>',
       '#element_key' => 'do-order-search',
       '#validate' => array('_commerce_pos_order_search_validate'),
+      '#name' => 'do-order-search',
     );
   }
 
@@ -625,6 +626,7 @@ function commerce_pos_transaction_ajax_check(&$form, &$form_state) {
         case 'void-transaction':
           $transaction->void();
           unset($form_state['transaction']);
+          unset($form_state['input']);
           drupal_set_message(t('Transaction @id voided.', array('@id' => $transaction->transactionId)));
           break;
 
@@ -676,6 +678,8 @@ function commerce_pos_transaction_ajax_check(&$form, &$form_state) {
               $transaction->addProduct($form_state['triggering_element']['#line_items'][$value]->commerce_product->value(), 1, TRUE, $form_state['triggering_element']['#line_items'][$value]->commerce_unit_price->value()['amount']);
             }
           }
+
+          break;
 
         default:
           // If we didn't reach any of the above, it means we don't need to reload the order.
@@ -769,10 +773,10 @@ function commerce_pos_transaction_pay_submit($form, &$form_state) {
  */
 function _commerce_pos_order_search_validate($form, &$form_state) {
   if (empty($form_state['values']['order_search']['input'])) {
-    form_set_error('order_search][input', t('Order number cannot be empty.'));
+    form_set_error('order_search][input', t('Order ID cannot be empty.'));
   }
   else if (!ctype_digit($form_state['values']['order_search']['input'])) {
-    form_set_error('order_search][input', t('Order number is invalid.'));
+    form_set_error('order_search][input', t('Order ID is invalid.'));
   }
 }
 
@@ -796,7 +800,7 @@ function commerce_pos_return_select_item_popup(&$form, &$form_state, $order) {
 
       // Load the product.
       $product_sku = $line_item_wrapper->commerce_product->sku->value();
-      if (!empty($product_sku) && $product = commerce_product_load_by_sku($product_sku)) {
+      if (!empty($product_sku) && $product = $line_item_wrapper->commerce_product->value()) {
 
         // Add all the items one by one to our markup variable so we can add
         // that to the checkboxes element below.
@@ -813,7 +817,7 @@ function commerce_pos_return_select_item_popup(&$form, &$form_state, $order) {
         // Make sure we display the actual price paid to account for any
         // discounts the user might have received.
         $markup .= '<div class="commerce-pos-return-product-price-paid">'
-          . t('Price Paid: @price', array('@price' => commerce_currency_format($line_item_wrapper->commerce_unit_price->value()['amount'], $line_item_wrapper->commerce_unit_price->value()['currency_code'])))
+          . t('Price Paid/Per Item: @price', array('@price' => commerce_currency_format($line_item_wrapper->commerce_unit_price->value()['amount'], $line_item_wrapper->commerce_unit_price->value()['currency_code'])))
           . '</div></div>';
 
         // Add the markup to the checkboxes options to add below.
@@ -844,6 +848,7 @@ function commerce_pos_return_select_item_popup(&$form, &$form_state, $order) {
       'wrapper' => 'commerce-pos-sale-wrapper',
     ),
     '#element_key' => 'return-items-add',
+    '#name' => 'return-items-add',
     '#line_items' => $line_items,
     '#weight' => 1,
   );
