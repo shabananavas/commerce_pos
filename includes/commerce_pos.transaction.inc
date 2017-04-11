@@ -123,7 +123,11 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
   }
 
   $products_not_configured = FALSE;
-  if (empty(variable_get('commerce_pos_available_products', array('product')))) {
+  $product_types = variable_get('commerce_pos_available_products', array('product'));
+  if (empty($product_types)) {
+    $products_not_configured = TRUE;
+  }
+  else if (is_array($product_types) && empty(array_filter($product_types))) {
     $products_not_configured = TRUE;
   }
 
