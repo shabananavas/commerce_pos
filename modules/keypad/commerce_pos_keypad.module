@@ -17,6 +17,7 @@ function commerce_pos_keypad_theme($existing, $type, $theme, $path) {
       'variables' => array(
         'inputs' => array(),
         'currency_code' => '',
+        'denominations' => array(),
       ),
     ),
     'commerce_pos_keypad_keypad' => array(
@@ -84,11 +85,24 @@ function commerce_pos_keypad_pre_render($element) {
  *   The altered element.
  */
 function commerce_pos_keypad_pre_render_cash_input(array $element) {
+  // Let's first grab all the denominations under this currency code.
+  $currency_id = db_select('commerce_pos_currency_denomination_type', 't')
+    ->fields('t', array('currency_id'))
+    ->condition('currency_code', isset($element['#commerce_pos_keypad']['currency_code']) ? $element['#commerce_pos_keypad']['currency_code'] : commerce_default_currency())
+    ->execute()
+    ->fetchField();
+  $denominations = db_select('commerce_pos_currency_denomination', 'd')
+    ->fields('d')
+    ->condition('currency_id', $currency_id)
+    ->execute()
+    ->fetchAllAssoc('denomination_id');
+
   $element['#attached']['js'][] = array(
     'type' => 'setting',
     'data' => array(
       'commercePosKeypadCashInput' => array(
         'inputBox' => theme('commerce_pos_keypad_cash_input_box', array(
+          'denominations' => $denominations,
           'currency_code' => isset($element['#commerce_pos_keypad']['currency_code']) ? $element['#commerce_pos_keypad']['currency_code'] : commerce_default_currency(),
         )),
       ),
