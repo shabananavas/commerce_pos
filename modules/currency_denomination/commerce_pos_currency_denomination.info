@@ -1,0 +1,6 @@
+name = Commerce POS Currency Denomination
+description = Provides a interface for adding currency denomination types.
+core = 7.x
+package = Commerce POS
+
+dependencies[] = commerce_pos

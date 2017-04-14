@@ -85,17 +85,8 @@ function commerce_pos_keypad_pre_render($element) {
  *   The altered element.
  */
 function commerce_pos_keypad_pre_render_cash_input(array $element) {
-  // Let's first grab all the denominations under this currency code.
-  $currency_id = db_select('commerce_pos_currency_denomination_type', 't')
-    ->fields('t', array('currency_id'))
-    ->condition('currency_code', isset($element['#commerce_pos_keypad']['currency_code']) ? $element['#commerce_pos_keypad']['currency_code'] : commerce_default_currency())
-    ->execute()
-    ->fetchField();
-  $denominations = db_select('commerce_pos_currency_denomination', 'd')
-    ->fields('d')
-    ->condition('currency_id', $currency_id)
-    ->execute()
-    ->fetchAllAssoc('denomination_id');
+  // Get all the denominations that the user has configured for.
+  $denominations = commerce_pos_currency_denomination_get_denominations(variable_get('commerce_pos_default_currency_denomination_types', array('USD')));
 
   $element['#attached']['js'][] = array(
     'type' => 'setting',
