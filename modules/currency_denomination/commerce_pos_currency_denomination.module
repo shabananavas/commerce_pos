@@ -20,9 +20,10 @@ function commerce_pos_currency_denomination_menu() {
     'file' => 'includes/commerce_pos_currency_denomination.admin.inc',
   );
 
-  $items['admin/commerce/config/pos/denomination/add'] = array(
+  $items['admin/commerce/config/pos/denomination-type/add'] = array(
     'title' => 'Add Currency Denomination Type',
     'page callback' => 'drupal_get_form',
+    'type' => MENU_CALLBACK,
     'page arguments' => array('commerce_pos_currency_add_denomination_type_form'),
     'access callback' => '_commerce_pos_access_check',
     'access arguments' => array('process commerce pos sales'),
@@ -39,6 +40,35 @@ function commerce_pos_currency_denomination_menu() {
     'file' => 'includes/commerce_pos_currency_denomination.admin.inc',
   );
 
+  $items['admin/commerce/config/pos/denomination-type/%/denomination/add'] = array(
+    'title' => 'Add Denomination',
+    'page callback' => 'drupal_get_form',
+    'type' => MENU_CALLBACK,
+    'page arguments' => array('commerce_pos_currency_add_denomination_form', 5),
+    'access callback' => '_commerce_pos_access_check',
+    'access arguments' => array('process commerce pos sales'),
+    'file' => 'includes/commerce_pos_currency_denomination.admin.inc',
+  );
+
+  $items['admin/commerce/config/pos/denomination-type/%/denomination/view'] = array(
+    'title' => 'View Denominations',
+    'page callback' => 'commerce_pos_currency_view_denominations',
+    'type' => MENU_CALLBACK,
+    'page arguments' => array(5),
+    'access callback' => '_commerce_pos_access_check',
+    'access arguments' => array('process commerce pos sales'),
+    'file' => 'includes/commerce_pos_currency_denomination.admin.inc',
+  );
+
+  $items['admin/commerce/config/pos/denomination-type/%/denomination/%/delete'] = array(
+    'title' => 'Delete Denomination',
+    'page callback' => 'drupal_get_form',
+    'type' => MENU_CALLBACK,
+    'page arguments' => array('commerce_pos_currency_delete_denomination_form', 5, 7),
+    'access callback' => '_commerce_pos_access_check',
+    'access arguments' => array('process commerce pos sales'),
+    'file' => 'includes/commerce_pos_currency_denomination.admin.inc',
+  );
 
   return $items;
 }
@@ -58,7 +88,7 @@ function commerce_pos_currency_denomination_get_denominations($currency_codes = 
 
   if ($currency_codes) {
     $currency_ids = commerce_pos_denomination_get_currency_id($currency_codes);
-    $query = $query->condition('currency_id', array_keys($currency_ids), 'IN');
+    $query = $query->condition('currency_id', $currency_ids, 'IN');
   }
   $results = $query->execute();
 
@@ -90,6 +120,25 @@ function commerce_pos_denomination_get_currency_types($currency_codes = array())
 }
 
 /**
+ * Returns the configured currency denomination types.
+ *
+ * @param array $currency_ids
+ * @return array
+ */
+function commerce_pos_denomination_get_currency_types_from_id($currency_ids = array()) {
+  $query = db_select('commerce_pos_currency_denomination_type', 't');
+  $query = $query->fields('t');
+
+  if ($currency_ids) {
+    $query = $query->condition('currency_id', $currency_ids, 'IN');
+  }
+
+  $denomination_types = $query->execute();
+
+  return $denomination_types;
+}
+
+/**
  * Returns the currency ID given currency codes.
  *
  * @param array $currency_codes
@@ -100,7 +149,26 @@ function commerce_pos_denomination_get_currency_id($currency_codes) {
     ->fields('t', array('currency_id'))
     ->condition('currency_code', $currency_codes, 'IN')
     ->execute()
-    ->fetchAllKeyed(0, 1);
+    ->fetchCol();
 
   return $currency_ids;
+}
+
+/**
+ * Get the denomination info from the db given a denomination ID.
+ *
+ * @param array $currency_codes
+ * @return array
+ */
+function commerce_pos_currency_denomination_get_denomination($denomination_id) {
+  // Let's first grab all the denominations under the given currency codes.
+  $query = db_select('commerce_pos_currency_denomination', 'd');
+  $query->fields('d');
+
+  if ($denomination_id) {
+    $query = $query->condition('denomination_id', $denomination_id);
+  }
+  $results = $query->execute();
+
+  return $results;
 }
