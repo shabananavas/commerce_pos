@@ -107,6 +107,8 @@ function commerce_pos_currency_denomination_get_denominations($currency_codes = 
  * @return array
  */
 function commerce_pos_denomination_get_currency_types($currency_codes = array()) {
+  $denomination_types = array();
+
   $query = db_select('commerce_pos_currency_denomination_type', 't');
   $query = $query->fields('t');
 
@@ -114,7 +116,12 @@ function commerce_pos_denomination_get_currency_types($currency_codes = array())
     $query = $query->condition('currency_code', $currency_codes, 'IN');
   }
 
-  $denomination_types = $query->execute();
+  $results = $query->execute();
+
+  // Let's organize them by currency id.
+  foreach ($results as $result) {
+    $denomination_types[$result->currency_id] = $result;
+  }
 
   return $denomination_types;
 }
@@ -126,6 +133,8 @@ function commerce_pos_denomination_get_currency_types($currency_codes = array())
  * @return array
  */
 function commerce_pos_denomination_get_currency_types_from_id($currency_ids = array()) {
+  $denomination_types = array();
+
   $query = db_select('commerce_pos_currency_denomination_type', 't');
   $query = $query->fields('t');
 
@@ -133,7 +142,12 @@ function commerce_pos_denomination_get_currency_types_from_id($currency_ids = ar
     $query = $query->condition('currency_id', $currency_ids, 'IN');
   }
 
-  $denomination_types = $query->execute();
+  $results = $query->execute();
+
+  // Let's organize them by currency id.
+  foreach ($results as $result) {
+    $denomination_types[$result->currency_id] = $result;
+  }
 
   return $denomination_types;
 }
@@ -146,10 +160,10 @@ function commerce_pos_denomination_get_currency_types_from_id($currency_ids = ar
  */
 function commerce_pos_denomination_get_currency_id($currency_codes) {
   $currency_ids = db_select('commerce_pos_currency_denomination_type', 't')
-    ->fields('t', array('currency_id'))
+    ->fields('t', array('currency_code', 'currency_id'))
     ->condition('currency_code', $currency_codes, 'IN')
     ->execute()
-    ->fetchCol();
+    ->fetchAllKeyed(0, 1);
 
   return $currency_ids;
 }
@@ -161,6 +175,8 @@ function commerce_pos_denomination_get_currency_id($currency_codes) {
  * @return array
  */
 function commerce_pos_currency_denomination_get_denomination($denomination_id) {
+  $denomination = array();
+
   // Let's first grab all the denominations under the given currency codes.
   $query = db_select('commerce_pos_currency_denomination', 'd');
   $query->fields('d');
@@ -170,5 +186,10 @@ function commerce_pos_currency_denomination_get_denomination($denomination_id) {
   }
   $results = $query->execute();
 
-  return $results;
+  // Let's organize them by denomination id.
+  foreach ($results as $result) {
+    $denomination[$result->denomination_id] = $result;
+  }
+
+  return $denomination;
 }
