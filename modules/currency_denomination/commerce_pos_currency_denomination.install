@@ -73,9 +73,14 @@ function commerce_pos_currency_denomination_schema() {
     'primary key' => array('denomination_id'),
   );
 
-  _commerce_pos_currency_denomination_add_default_denominations();
-
   return $schema;
+}
+
+/**
+ * Implements hook_install().
+ */
+function commerce_pos_currency_denomination_install() {
+  _commerce_pos_currency_denomination_add_default_denominations();
 }
 
 /**
