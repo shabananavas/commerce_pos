@@ -68,7 +68,7 @@ function commerce_pos_currency_denomination_schema() {
       ),
     ),
     'indexes' => array(
-      'currency_id' => array('currency_id'),
+      'currency_id_denomination_id' => array('currency_id', 'denomination_id'),
     ),
     'primary key' => array('denomination_id'),
   );

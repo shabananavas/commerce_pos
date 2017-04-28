@@ -17,25 +17,25 @@ function commerce_pos_currency_denomination_settings_form($form, &$form_state) {
   );
 
   $denomination_options = array();
-  $denomination_types = commerce_pos_denomination_get_currency_types();
+  $denomination_types = commerce_pos_currency_denomination_get_currency_types();
 
   // Format the denomination options for our form element.
   foreach ($denomination_types as $type) {
     $markup = $type->currency_code;
-    $markup .= ' ' . l(t('View Denominations'), 'admin/commerce/config/pos/denomination-type/' . $type->currency_id . '/denomination/view', array(
-      'attributes' => array('class' => array('view-denomination'))
-    ));
-    $markup .= ' | ' . l(t('Add Denominations'), 'admin/commerce/config/pos/denomination-type/' . $type->currency_id . '/denomination/add', array(
-      'attributes' => array('class' => array('add-denomination'))
-    ));
+    $markup .= ' ' . l(t('view'), 'admin/commerce/config/pos/denomination-type/' . $type->currency_id . '/denomination/view', array(
+        'attributes' => array('class' => array('view-denomination'))
+      ));
+    $markup .= ' | ' . l(t('add'), 'admin/commerce/config/pos/denomination-type/' . $type->currency_id . '/denomination/add', array(
+        'attributes' => array('class' => array('add-denomination'))
+      ));
     if ($type->currency_code != 'USD') {
-      $markup .= ' | ' . l(t('Delete Denomination Type'), 'admin/commerce/config/pos/denomination-type/' . $type->currency_id . '/delete', array(
+      $markup .= ' | ' . l(t('delete'), 'admin/commerce/config/pos/denomination-type/' . $type->currency_id . '/delete', array(
           'attributes' => array('class' => array('delete-denomination'))
         ));
     }
     $denomination_options[$type->currency_code] = $markup;
   }
-  
+
   $form['commerce_pos_default_currency_denomination_types'] = array(
     '#title' => t('Set Default Currency Denominations'),
     '#type' => 'checkboxes',
@@ -121,7 +121,7 @@ function commerce_pos_currency_add_denomination_type_form_submit($form, &$form_s
  */
 function commerce_pos_currency_delete_denomination_type_form($form, &$form_state, $currency_id) {
   // Get the denomination type info.
-  $form_state['denomination_type_info'] = commerce_pos_denomination_get_currency_types_from_id(array($currency_id));
+  $form_state['denomination_type_info'] = commerce_pos_currency_denomination_get_currency_types_from_id(array($currency_id));
 
   if (!empty($form_state['denomination_type_info'])) {
     $form_state['denomination_type_info'] = $form_state['denomination_type_info'][$currency_id];
@@ -129,7 +129,7 @@ function commerce_pos_currency_delete_denomination_type_form($form, &$form_state
     return confirm_form(
       $form,
       t('Are you sure you want to delete currency denomination type @type?', array(
-        '@type' => $form_state['denomination_type_info']->currency_code
+        '@type' => $form_state['denomination_type_info']->currency_code,
       )),
       'admin/commerce/config/pos/denomination',
       t('All denominations under this type will be deleted. This action cannot be undone.'),
@@ -170,7 +170,7 @@ function commerce_pos_currency_view_denominations($currency_id) {
   $output = '';
 
   // Get the denomination type info.
-  $denomination_type_info = commerce_pos_denomination_get_currency_types_from_id(array($currency_id));
+  $denomination_type_info = commerce_pos_currency_denomination_get_currency_types_from_id(array($currency_id));
 
   if (!empty($denomination_type_info)) {
     $denomination_type_info = $denomination_type_info[$currency_id];
@@ -186,22 +186,30 @@ function commerce_pos_currency_view_denominations($currency_id) {
         '@type' => $denomination_type_info->currency_code
       ));
 
-      $output .= '<table class="commerce-pos-current-denominations">';
-      $output .= '<tr>';
-      $output .= '<th>' . t('Title') . '</th>';
-      $output .= '<th>' . t('Amount') . '</th>';
-      $output .= '<th>' . t('Options') . '</th>';
-      $output .= '</tr>';
+      $headers = array(
+        'Title' => t('Title'),
+        'Amount' => t('Amount'),
+        'Options' => t('Options'),
+      );
+      $rows = array();
 
       foreach ($denominations[$denomination_type_info->currency_id] as $denomination) {
-        $output .= '<tr>';
-        $output .= '<td>' . $denomination->denomination_title . '</td>';
-        $output .= '<td>' . $denomination->denomination_amount . '</td>';
-        $output .= '<td>' . l(t('Delete Denomination'), 'admin/commerce/config/pos/denomination-type/' . $currency_id . '/denomination/' . $denomination->denomination_id . '/delete') . '</td>';
-        $output .= '</tr>';
+        $row = array();
+        $row[] = $denomination->denomination_title;
+        $row[] = $denomination->denomination_amount;
+        $row[] = l(t('delete'), 'admin/commerce/config/pos/denomination-type/' . $currency_id . '/denomination/' . $denomination->denomination_id . '/delete');
+        $rows[] = $row;
       }
 
-      $output .= '</table>';
+      $output .= theme('table', array(
+          'header' => $headers,
+          'rows' => $rows,
+          'sticky' => TRUE,
+          'attributes' => array(
+            'class' => array('commerce-pos-current-denominations')
+          )
+        )
+      );
     }
     else {
       $output .= t('<p>Currently, no denominations have been added for this denomination type.</p>');
@@ -221,7 +229,7 @@ function commerce_pos_currency_add_denomination_form($form, &$form_state, $curre
   $form_state['currency_id'] = $currency_id;
 
   // Get the denomination info for this type.
-  $form_state['denomination_type_info'] = commerce_pos_denomination_get_currency_types_from_id(array($currency_id));
+  $form_state['denomination_type_info'] = commerce_pos_currency_denomination_get_currency_types_from_id(array($currency_id));
 
   if (!empty($form_state['denomination_type_info'])) {
     $form_state['denomination_type_info'] = $form_state['denomination_type_info'][$currency_id];
@@ -229,16 +237,6 @@ function commerce_pos_currency_add_denomination_form($form, &$form_state, $curre
     drupal_set_title(t('Add Denomination for Type @type', array(
       '@type' => $form_state['denomination_type_info']->currency_code
     )));
-
-    $form['commerce_pos_denomination_name'] = array(
-      '#type' => 'textfield',
-      '#size' => 25,
-      '#maxlength' => 25,
-      '#default_value' => NULL,
-      '#title' => t('Denomination Name'),
-      '#description' => t('Enter the denomination name eg. "penny".'),
-      '#required' => TRUE,
-    );
 
     $form['commerce_pos_denomination_title'] = array(
       '#type' => 'textfield',
@@ -250,6 +248,18 @@ function commerce_pos_currency_add_denomination_form($form, &$form_state, $curre
       '#required' => TRUE,
     );
 
+    $form['commerce_pos_denomination_name'] = array(
+      '#type' => 'machine_name',
+      '#title' => t('Denomination Name'),
+      '#default_value' => '',
+      '#maxlength' => 25,
+      '#description' => t('A unique denomination name eg. "penny".'),
+      '#machine_name' => array(
+        'exists' => 'commerce_pos_currency_denomination_name_exists',
+        'source' => array('commerce_pos_denomination_title'),
+      ),
+    );
+
     $form['commerce_pos_denomination_amount'] = array(
       '#type' => 'textfield',
       '#size' => 10,
@@ -258,6 +268,7 @@ function commerce_pos_currency_add_denomination_form($form, &$form_state, $curre
       '#title' => t('Denomination Amount'),
       '#description' => t('Enter the denomination amount eg. "1".'),
       '#required' => TRUE,
+      '#element_validate' => array('element_validate_integer_positive'),
     );
 
     $form['actions']['submit'] = array(
@@ -270,28 +281,6 @@ function commerce_pos_currency_add_denomination_form($form, &$form_state, $curre
   }
 
   return $form;
-}
-
-/**
- * Validate handler for adding a new denomination.
- */
-function commerce_pos_currency_add_denomination_form_validate($form, &$form_state) {
-  // Check if the denomination name already exists in the db for this type.
-  $result = db_select('commerce_pos_currency_denomination', 't')
-    ->fields('t', array('currency_id'))
-    ->condition('currency_id', $form_state['currency_id'])
-    ->condition('denomination_name', $form_state['values']['commerce_pos_denomination_name'])
-    ->execute()
-    ->fetchField();
-
-  if ($result) {
-    form_set_error('', t('This denomination already exists for this currency type.'));
-  }
-
-  // Make sure amount is a number.
-  if (!ctype_digit($form_state['values']['commerce_pos_denomination_amount'])) {
-    form_set_error('commerce_pos_denomination_amount', t('This denomination amount should be a valid number.'));
-  }
 }
 
 /**
