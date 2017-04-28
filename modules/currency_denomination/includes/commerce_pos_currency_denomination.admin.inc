@@ -123,6 +123,15 @@ function commerce_pos_currency_delete_denomination_type_form($form, &$form_state
   // Get the denomination type info.
   $form_state['denomination_type_info'] = commerce_pos_currency_denomination_get_currency_types_from_id(array($currency_id));
 
+  // If the denomination type is part of the enabled denomination types, then,
+  // don't let the user delete it.
+  $configured_denom_types = variable_get('commerce_pos_default_currency_denomination_types');
+  if (isset($configured_denom_types[$form_state['denomination_type_info'][$currency_id]->currency_code])
+    && $configured_denom_types[$form_state['denomination_type_info'][$currency_id]->currency_code] === $form_state['denomination_type_info'][$currency_id]->currency_code) {
+    form_set_error('', t('This denomination type is currently enabled. Please disable it first before deleting.'));
+    return;
+  }
+
   if (!empty($form_state['denomination_type_info'])) {
     $form_state['denomination_type_info'] = $form_state['denomination_type_info'][$currency_id];
 
