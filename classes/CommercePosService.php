@@ -11,6 +11,7 @@
 class CommercePosService {
   const TRANSACTION_TYPE_SALE = 'sale';
   const TRANSACTION_TYPE_RETURN = 'return';
+  const TRANSACTION_TYPE_EXCHANGE = 'exchange';
 
   static private $transactions = array();
 
@@ -164,6 +165,7 @@ class CommercePosService {
     return array(
       self::TRANSACTION_TYPE_SALE => t('Sale'),
       self::TRANSACTION_TYPE_RETURN => t('Return'),
+      self::TRANSACTION_TYPE_EXCHANGE => t('Exchange'),
     );
   }
 

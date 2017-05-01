@@ -22,15 +22,24 @@ function commerce_pos_return($form, &$form_state) {
 }
 
 /**
+ * Callback for the POS exchange form.
+ */
+function commerce_pos_exchange($form, &$form_state) {
+  commerce_pos_transaction_form($form, $form_state, CommercePosService::TRANSACTION_TYPE_EXCHANGE);
+  return $form;
+}
+
+/**
  * Primary callback for building a POS transaction form.
  */
 function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) {
   global $user;
 
   $return = $transaction_type == CommercePosService::TRANSACTION_TYPE_RETURN;
+  $exchange = $transaction_type == CommercePosService::TRANSACTION_TYPE_EXCHANGE;
 
   $form['#theme'] = 'commerce_pos_transaction';
-  $form['#redirect_key'] = $return ? 'return' : 'sale';
+  $form['#redirect_key'] = $return ? 'return' : ($exchange ? 'exchange' : 'sale');
   $form['#transaction_type'] = $transaction_type;
 
   $form['#attached']['css'][] = drupal_get_path('module', 'commerce_pos') . '/css/commerce_pos_style.css';
@@ -110,7 +119,7 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
     'focusProductInput' => $focus_product_input,
   );
 
-  $form['#prefix'] = '<div id="' . $wrapper_id . '" class="' . ($return ? 'return' : 'sale') . '">';
+  $form['#prefix'] = '<div id="' . $wrapper_id . '" class="' . ($return ? 'return' : ($exchange ? 'exchange' : 'sale')) . '">';
   $form['#suffix'] = '</div>';
 
   if (!empty($form_state['transaction']->transactionId)) {
@@ -176,7 +185,7 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
 
   // Let's add a order search textfield if we're in a return transaction so the
   // user could easily pick out which items from the order needs to be returned.
-  if ($return) {
+  if ($return || $exchange) {
     $form['order_search'] = array(
       '#type' => 'container',
       '#prefix' => '<div id="commerce-pos-return-order-search">',
@@ -187,19 +196,19 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
       '#type' => 'textfield',
       '#title' => '',
       '#size' => 60,
-      '#description' => t('Search by order ID to load the items in an order.<br>(Note: This does not support searching for Order Number.)'),
+      '#description' => t('Search by order number to load the items in an order.'),
       '#attributes' => array(
         'placeholder' => t('Order Search'),
       ),
+      '#element_validate' => array('element_validate_integer_positive'),
       '#default_value' => !empty($form_state['values']['order_search']['input']) ? $form_state['values']['order_search']['input'] : NULL,
     );
 
     $form['order_search']['search'] = array(
       '#type' => 'button',
-      '#value' => t('Go'),
+      '#value' => t('Return items from this order'),
       '#ajax' => $wrapper_ajax,
       '#element_key' => 'do-order-search',
-      '#validate' => array('_commerce_pos_order_search_validate'),
       '#name' => 'do-order-search',
     );
   }
@@ -209,42 +218,44 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
   );
 
   // Add the onboarding text if the order is empty.
-  if (empty($order_wrapper)) {
+  if (empty($order_wrapper) && !($exchange)) {
     $form['product_search']['onboarding_text'] = array(
       '#type' => 'markup',
       '#markup' => '<div class="commerce-pos-search-onboarding-message">' . t("<strong>Start your @txn_type:</strong> scan barcode or use product search", array(
-          '@txn_type' => $return ? t('return') : t('order'),
+          '@txn_type' => $return ? t('return') : ($exchange ? t('exchange') : t('order')),
         )) . '</div>',
     );
   }
 
-  $form['product_search']['input'] = array(
-    '#type' => 'textfield',
-    '#title' => t('product search'),
-    '#title_display' => 'after',
-    '#size' => 60,
-    '#description' => t('Search by SKU or product title, start typing to begin your search.'),
-    '#attributes' => array(
-      'class' => array(
-        'commerce-pos-product-autocomplete',
-        'commerce-pos-product-search',
+  if (!($exchange)) {
+    $form['product_search']['input'] = array(
+      '#type' => 'textfield',
+      '#title' => t('product search'),
+      '#title_display' => 'after',
+      '#size' => 60,
+      '#description' => t('Search by SKU or product title, start typing to begin your search.'),
+      '#attributes' => array(
+        'class' => array(
+          'commerce-pos-product-autocomplete',
+          'commerce-pos-product-search',
+        ),
+        'placeholder' => t('Product Search'),
       ),
-      'placeholder' => t('Product Search'),
-    ),
-    '#element_validate' => array('_commerce_pos_transaction_validate_product_input'),
-  );
+      '#element_validate' => array('_commerce_pos_transaction_validate_product_input'),
+    );
 
-  $form['product_search']['product_sku'] = array(
-    '#type' => 'textfield',
-    '#title' => NULL,
-    '#ajax' => $wrapper_ajax,
-    '#attributes' => array(
-      'class' => array('commerce-pos-product-sku-input'),
-    ),
-    '#element_key' => 'product-sku',
-    '#prefix' => '<div class="element-invisible">',
-    '#suffix' => '</div>',
-  );
+    $form['product_search']['product_sku'] = array(
+      '#type' => 'textfield',
+      '#title' => NULL,
+      '#ajax' => $wrapper_ajax,
+      '#attributes' => array(
+        'class' => array('commerce-pos-product-sku-input'),
+      ),
+      '#element_key' => 'product-sku',
+      '#prefix' => '<div class="element-invisible">',
+      '#suffix' => '</div>',
+    );
+  }
 
   if (!empty($order_wrapper)) {
     $form['line_items'] = array(
@@ -252,8 +263,8 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
       '#type' => 'container',
     );
 
-    $total_prefix = $return ? '(' : '';
-    $total_suffix = $return ? ')' : '';
+    $total_prefix = $return || $exchange ? '(' : '';
+    $total_suffix = $return || $exchange ? ')' : '';
 
     foreach ($order_wrapper->commerce_line_items as $line_item_wrapper) {
       // Only show product line item types.
@@ -271,7 +282,7 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
 
       // If commerce_stock is enabled and enabled for this product type as well,
       // make sure we inform the user when a product is out of stock.
-      if (!$return && module_exists('commerce_stock') && commerce_ss_product_type_enabled($line_item_wrapper->commerce_product->value()->type)) {
+      if ((!$return) && module_exists('commerce_stock') && commerce_ss_product_type_enabled($line_item_wrapper->commerce_product->value()->type)) {
         $out_of_stock = FALSE;
         // Let's check the stock of this product by calling our hook that checks
         // the product's stock.
@@ -385,6 +396,14 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
       else {
         $line_item_element['sku'] = array(
           '#markup' => '<br />' . $line_item_wrapper->commerce_product->sku->value(),
+        );
+      }
+
+      // If we're doing an exchange, display info about the item we're
+      // exchanging with.
+      if ($exchange) {
+        $line_item_element['exchange_for_item'] = array(
+          '#markup' => '<div class="exchange-for-item">' . t('Exchange for item: @item', array('@item' => $form_state['exchange_for_item'][$line_item_wrapper->commerce_product->sku->value()])) . '</div>',
         );
       }
 
@@ -537,6 +556,7 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
 
   if ($has_active_transaction) {
     $order_total = commerce_pos_price_order_format($order_wrapper, 'commerce_order_total', $return);
+    $order_total_amount = $order_wrapper->commerce_order_total->value()['amount'];
 
     $transaction_options['balance'] = array(
       '#markup' => commerce_pos_balance_summary($order_wrapper->value()),
@@ -592,9 +612,20 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
     $button_keybind_text = '';
   }
 
+  // Change the 'Pay' button text depending on which transaction type we're in
+  // and whether we're refunding or charging money.
+  $pay_value = t('Pay');
+  if ($return) {
+    $pay_value = t('Refund');
+  }
+  else if ($exchange) {
+    if ($order_total_amount < 0) {
+      $pay_value = t('Refund');
+    }
+  }
   $transaction_options['actions']['pay'] = array(
     '#type' => 'submit',
-    '#value' => ($return ? t('Refund') : t('Pay')) . $button_keybind_text,
+    '#value' => $pay_value . $button_keybind_text,
     '#attributes' => array(
       'class' => array('commerce-pos-btn-pay'),
     ),
@@ -721,6 +752,12 @@ function commerce_pos_transaction_ajax_check(&$form, &$form_state) {
   if (isset($form_state['triggering_element'])) {
     $triggering_element = $form_state['triggering_element'];
 
+    // If an exchange item was selected.
+    if ($triggering_element['#parents'][0] == 'return_items') {
+      $form_state['exchange_item'] = $triggering_element['#value'];
+      commerce_pos_return_select_exchange_item_popup($form, $form_state);
+    }
+
     if (!empty($form_state['triggering_element']['#element_key'])) {
       /* @var CommercePosTransaction $transaction */
       $transaction = $form_state['transaction'];
@@ -739,7 +776,20 @@ function commerce_pos_transaction_ajax_check(&$form, &$form_state) {
           }
 
           if (!empty($product_sku) && $product = commerce_product_load_by_sku($product_sku)) {
-            $transaction->addProduct($product);
+            // If we're exchanging for another item.
+            if ($transaction->type == 'exchange') {
+              // First, add the product that we're exchanging for into an array.
+              $form_state['exchange_for_item'][$form_state['values']['product_sku']] = $form_state['exchange_item'];
+
+              // Now, determine if the product we're exchanging with is more
+              // or less than the old product.
+              $difference_amount = $product->commerce_price[LANGUAGE_NONE][0]['amount'] - $form_state['order_line_items'][$form_state['exchange_item']]->commerce_unit_price->value()['amount'];
+
+              $transaction->addProduct($product, 1, TRUE, $difference_amount);
+            }
+            else {
+              $transaction->addProduct($product);
+            }
           }
 
           $form_state['focus_product_input'] = TRUE;
@@ -800,7 +850,7 @@ function commerce_pos_transaction_ajax_check(&$form, &$form_state) {
           break;
 
         case 'do-order-search':
-          $order = commerce_order_load($form_state['input']['order_search']['input']);
+          $order = commerce_order_load_by_number($form_state['input']['order_search']['input']);
           // If we have got a valid order display the item in the order in a
           // modal.
           if ($order) {
@@ -825,6 +875,10 @@ function commerce_pos_transaction_ajax_check(&$form, &$form_state) {
             }
           }
 
+          break;
+
+        case 'exchange-item':
+          commerce_pos_return_select_exchange_item_popup($form, $form_state);
           break;
 
         default:
@@ -935,4 +989,135 @@ function _commerce_pos_override_confirm_callback($form, &$form_state) {
 function _commerce_pos_override_confirm_validate($form, &$form_state) {
   // Add the product to the overridden items list.
   $form_state['out_of_stock_overridden_products'][$form_state['triggering_element']['#product_id']] = $form_state['triggering_element']['#product_id'];
+}
+
+/**
+ * Returns a modal form displaying each item in an order along with a checkbox
+ * for the user to add that item to the return transaction.
+ */
+function commerce_pos_return_select_item_popup(&$form, &$form_state, $order) {
+  $return = $form_state['transaction']->type == 'return';
+
+  // Load our generic modal form.
+  $form['commerce_pos_return_select_item_modal'] = commerce_pos_form_modal(array(
+    'closeable' => TRUE,
+    'throbber' => FALSE
+  ));
+
+  // Initialize variables.
+  $options = array();
+  $line_items = array();
+
+  // Go through each item in the order and generate the html for the items
+  // display.
+  foreach (entity_metadata_wrapper('commerce_order', $order)->commerce_line_items as $delta => $line_item_wrapper) {
+    if (in_array($line_item_wrapper->type->value(), commerce_product_line_item_types())) {
+
+      // Load the product.
+      $product_sku = $line_item_wrapper->commerce_product->sku->value();
+      if (!empty($product_sku) && $product = $line_item_wrapper->commerce_product->value()) {
+
+        // Add all the items one by one to our markup variable so we can add
+        // that to the checkboxes element below.
+        $markup = '';
+
+        if ($image = _commerce_pos_product_thumbnail($product)) {
+          $markup .= '<div class="commerce-pos-return-product-image">' . $image . '</div>';
+        }
+
+        $markup .= '<div class="commerce-pos-return-product-info"><div class="commerce-pos-return-product-title">' . $product->title_field[LANGUAGE_NONE][0]['safe_value'] . '</div>';
+
+        $markup .= '<div class="commerce-pos-return-product-sku">' . t('SKU: @sku', array('@sku' => $product_sku)) . '</div>';
+
+        // Make sure we display the actual price paid to account for any
+        // discounts the user might have received.
+        $markup .= '<div class="commerce-pos-return-product-price-paid">'
+          . t('Price Paid/Per Item: @price', array('@price' => commerce_currency_format($line_item_wrapper->commerce_unit_price->value()['amount'], $line_item_wrapper->commerce_unit_price->value()['currency_code'])))
+          . '</div></div>';
+
+        // Add the markup to the checkboxes options to add below.
+        $options[$product_sku] = $markup;
+
+        // Add the line items indexed by sku to the products array so we can add
+        // it to our close element.
+        $line_items[$product_sku] = $line_item_wrapper;
+      }
+    }
+  }
+
+  $return_text = $return ? t('Check the items that need to be returned') : t('Check the item that needs to be exchanged');
+  // Add a checkboxes element that will display each product in the order.
+  $form['commerce_pos_return_select_item_modal']['modal']['return_items'] = array(
+    '#title' => $return_text,
+    '#type' => 'checkboxes',
+    '#options' => $options,
+    '#weight' => 0,
+    '#element_key' => 'exchange-item',
+  );
+
+  if (!$return) {
+    $form['commerce_pos_return_select_item_modal']['modal']['return_items']['#ajax'] = array(
+      'callback' => 'commerce_pos_transaction_wrapper_js',
+      'wrapper' => 'commerce-pos-sale-wrapper',
+    );
+    $form_state['order_line_items'] = $line_items;
+  }
+  else {
+    // Add our close button which will add all the items that were selected to
+    // be returned to the return transaction.
+    $form['commerce_pos_return_select_item_modal']['modal']['add'] = array(
+      '#type' => 'button',
+      '#value' => t('Add'),
+      '#ajax' => array(
+        'callback' => 'commerce_pos_transaction_wrapper_js',
+        'wrapper' => 'commerce-pos-sale-wrapper',
+      ),
+      '#element_key' => 'return-items-add',
+      '#name' => 'return-items-add',
+      '#line_items' => $line_items,
+      '#weight' => 1,
+    );
+  }
+}
+
+function commerce_pos_return_select_exchange_item_popup(&$form, &$form_state) {
+  // Load our generic modal form.
+  $form['commerce_pos_return_select_exchange_item_modal'] = commerce_pos_form_modal(array(
+    'closeable' => TRUE,
+    'throbber' => FALSE
+  ));
+
+  $form['commerce_pos_return_select_exchange_item_modal']['modal']['product_search']['input'] = array(
+    '#type' => 'textfield',
+    '#prefix' => t('Select an item to exchange with'),
+    '#title' => t('product search'),
+    '#title_display' => 'after',
+    '#size' => 60,
+    '#description' => t('Search by SKU or product title, start typing to begin your search.'),
+    '#attributes' => array(
+      'class' => array(
+        'commerce-pos-product-autocomplete',
+        'commerce-pos-product-search',
+      ),
+      'placeholder' => t('Product Search'),
+    ),
+    '#element_validate' => array('_commerce_pos_transaction_validate_product_input'),
+  );
+
+  $form['commerce_pos_return_select_exchange_item_modal']['modal']['product_search']['product_sku'] = array(
+    '#type' => 'textfield',
+    '#title' => NULL,
+    '#ajax' => array(
+      'callback' => 'commerce_pos_transaction_wrapper_js',
+      'wrapper' => 'commerce-pos-sale-wrapper',
+    ),
+    '#attributes' => array(
+      'class' => array('commerce-pos-product-sku-input'),
+    ),
+    '#element_key' => 'product-sku',
+    '#prefix' => '<div class="element-invisible">',
+    '#suffix' => '</div>',
+  );
+
+  return $form;
 }

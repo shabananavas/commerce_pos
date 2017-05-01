@@ -22,6 +22,14 @@ function commerce_pos_return_payment($form, &$form_state) {
 }
 
 /**
+ * Callback for the POS exchange payment form.
+ */
+function commerce_pos_exchange_payment($form, &$form_state) {
+  commerce_pos_payment($form, $form_state, CommercePosService::TRANSACTION_TYPE_EXCHANGE);
+  return $form;
+}
+
+/**
  * Callback to build a POS payment form.
  */
 function commerce_pos_payment(&$form, &$form_state, $transaction_type) {
@@ -40,11 +48,12 @@ function commerce_pos_payment(&$form, &$form_state, $transaction_type) {
 
   form_load_include($form_state, 'inc', 'commerce_pos', 'includes/commerce_pos.common');
   commerce_pos_payment_ajax_check($form, $form_state);
+  dpm($form_state);
 
   $return = $transaction_type == CommercePosService::TRANSACTION_TYPE_RETURN;
   $payment_options = commerce_pos_get_payment_options();
   $form['#theme'] = 'commerce_pos_payment';
-  $form['#redirect_key'] = $return ? 'return' : 'sale';
+  $form['#redirect_key'] = $return ? 'return' : ($transaction_type == CommercePosService::TRANSACTION_TYPE_EXCHANGE ? 'exchange' : 'sale');
   $form['#transaction_type'] = $transaction_type;
 
   $form['#prefix'] = '<div id="' . $wrapper_id . '" class="' . ($return ? 'return' : 'sale') . '">';
@@ -99,6 +108,9 @@ function commerce_pos_payment(&$form, &$form_state, $transaction_type) {
     if ($return) {
       $summary_text = t('<div class="order-text">Return - !items - Order #@order_id </div>', $replacements);
     }
+    else if ($transaction_type == CommercePosService::TRANSACTION_TYPE_EXCHANGE) {
+      $summary_text = t('<div class="order-text">Exchange - !items - Order #@order_id </div>', $replacements);
+    }
     else {
       $summary_text = t('<div class="order-text">Payment - !items - Order #@order_id </div>', $replacements);
     }
@@ -116,7 +128,7 @@ function commerce_pos_payment(&$form, &$form_state, $transaction_type) {
     );
 
     $form['edit_order'] = array(
-      '#markup' => l($return ? t('Edit Return') : t('Edit Order'), 'admin/commerce/pos/' . $form['#redirect_key'], array(
+      '#markup' => l($return ? t('Edit Return') : ($transaction_type == CommercePosService::TRANSACTION_TYPE_EXCHANGE ? t('Edit Exchange') : t('Edit Order')), 'admin/commerce/pos/' . $form['#redirect_key'], array(
         'attributes' => array(
           'class' => array('commerce-pos-sale-pay-edit-order'),
         ),

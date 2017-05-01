@@ -47,6 +47,7 @@ function commerce_pos_preprocess_commerce_pos_header(&$variables) {
   $links = array(
     'admin/commerce/pos/sale' => t('Sale'),
     'admin/commerce/pos/return' => t('Return'),
+    'admin/commerce/pos/exchange' => t('Exchange'),
   );
 
   drupal_alter('commerce_pos_header_links', $links);

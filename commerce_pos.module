@@ -67,6 +67,26 @@ function commerce_pos_menu() {
     'type' => MENU_CALLBACK,
   );
 
+  $items['admin/commerce/pos/exchange'] = array(
+    'title' => 'Exchange',
+    'page callback' => 'commerce_pos_page',
+    'page arguments' => array('commerce_pos_exchange'),
+    'access callback' => '_commerce_pos_access_check',
+    'access arguments' => array('process commerce pos exchanges'),
+    'file' => 'includes/commerce_pos.transaction.inc',
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['admin/commerce/pos/exchange/payment'] = array(
+    'title' => 'Refund',
+    'page callback' => 'commerce_pos_page',
+    'page arguments' => array('commerce_pos_exchange_payment'),
+    'access callback' => '_commerce_pos_access_check',
+    'access arguments' => array('process commerce pos exchanges'),
+    'file' => 'includes/commerce_pos.payment.inc',
+    'type' => MENU_CALLBACK,
+  );
+
   $items['admin/commerce/pos/login'] = array(
     'title' => 'Employee Login',
     'page callback' => 'commerce_pos_page',
@@ -98,6 +118,7 @@ function commerce_pos_menu() {
       array(
         'process commerce pos sales',
         'process commerce pos returns',
+        'process commerce pos exchanges',
       ),
     ),
     'file' => 'includes/commerce_pos.common.inc',
@@ -138,6 +159,9 @@ function commerce_pos_permission() {
     ),
     'process commerce pos returns' => array(
       'title' => t('Process Commerce POS returns'),
+    ),
+    'process commerce pos exchanges' => array(
+      'title' => t('Process Commerce POS exchanges'),
     ),
   );
 }
@@ -241,6 +265,7 @@ function commerce_pos_commerce_pos_transaction_base_info() {
       'types' => array(
         CommercePosService::TRANSACTION_TYPE_SALE,
         CommercePosService::TRANSACTION_TYPE_RETURN,
+        CommercePosService::TRANSACTION_TYPE_EXCHANGE,
       ),
     ),
   );
