@@ -174,7 +174,7 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
     unset($form_state['lookup_result']);
   }
 
-  // Let's add a order search textfield if we're in a return transaction so the
+  // Let's add an order search textfield if we're in a return transaction so the
   // user could easily pick out which items from the order needs to be returned.
   if ($return) {
     $form['order_search'] = array(
@@ -183,23 +183,24 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
       '#tree' => TRUE,
       '#suffix' => '</div>',
     );
+    
     $form['order_search']['input'] = array(
       '#type' => 'textfield',
       '#title' => '',
       '#size' => 60,
-      '#description' => t('Search by order ID to load the items in an order.<br>(Note: This does not support searching for Order Number.)'),
+      '#description' => t('Search by order number to load the items in an order.'),
       '#attributes' => array(
         'placeholder' => t('Order Search'),
       ),
+      '#element_validate' => array('element_validate_integer_positive'),
       '#default_value' => !empty($form_state['values']['order_search']['input']) ? $form_state['values']['order_search']['input'] : NULL,
     );
 
     $form['order_search']['search'] = array(
       '#type' => 'button',
-      '#value' => t('Go'),
+      '#value' => t('Return items from this order'),
       '#ajax' => $wrapper_ajax,
       '#element_key' => 'do-order-search',
-      '#validate' => array('_commerce_pos_order_search_validate'),
       '#name' => 'do-order-search',
     );
   }
@@ -800,7 +801,7 @@ function commerce_pos_transaction_ajax_check(&$form, &$form_state) {
           break;
 
         case 'do-order-search':
-          $order = commerce_order_load($form_state['input']['order_search']['input']);
+          $order = commerce_order_load_by_number($form_state['input']['order_search']['input']);
           // If we have got a valid order display the item in the order in a
           // modal.
           if ($order) {
@@ -935,4 +936,81 @@ function _commerce_pos_override_confirm_callback($form, &$form_state) {
 function _commerce_pos_override_confirm_validate($form, &$form_state) {
   // Add the product to the overridden items list.
   $form_state['out_of_stock_overridden_products'][$form_state['triggering_element']['#product_id']] = $form_state['triggering_element']['#product_id'];
+}
+
+/**
+ * Returns a modal form displaying each item in an order along with a checkbox
+ * for the user to add that item to the return transaction.
+ */
+function commerce_pos_return_select_item_popup(&$form, &$form_state, $order) {
+
+  // Load our generic modal form.
+  $form['commerce_pos_return_select_item_modal'] = commerce_pos_form_modal(array(
+    'closeable' => TRUE,
+    'throbber' => FALSE
+  ));
+
+  // Initialize variables.
+  $options = array();
+  $line_items = array();
+
+  // Go through each item in the order and generate the html for the items
+  // display.
+  foreach (entity_metadata_wrapper('commerce_order', $order)->commerce_line_items as $delta => $line_item_wrapper) {
+    if (in_array($line_item_wrapper->type->value(), commerce_product_line_item_types())) {
+
+      // Load the product.
+      $product_sku = $line_item_wrapper->commerce_product->sku->value();
+      if (!empty($product_sku) && $product = $line_item_wrapper->commerce_product->value()) {
+
+        // Add all the items one by one to our markup variable so we can add
+        // that to the checkboxes element below.
+        $markup = '';
+
+        if ($image = _commerce_pos_product_thumbnail($product)) {
+          $markup .= '<div class="commerce-pos-return-product-image">' . $image . '</div>';
+        }
+
+        $markup .= '<div class="commerce-pos-return-product-info"><div class="commerce-pos-return-product-title">' . $product->title_field[LANGUAGE_NONE][0]['safe_value'] . '</div>';
+
+        $markup .= '<div class="commerce-pos-return-product-sku">' . t('SKU: @sku', array('@sku' => $product_sku)) . '</div>';
+
+        // Make sure we display the actual price paid to account for any
+        // discounts the user might have received.
+        $markup .= '<div class="commerce-pos-return-product-price-paid">'
+          . t('Price Paid/Per Item: @price', array('@price' => commerce_currency_format($line_item_wrapper->commerce_unit_price->value()['amount'], $line_item_wrapper->commerce_unit_price->value()['currency_code'])))
+          . '</div></div>';
+
+        // Add the markup to the checkboxes options to add below.
+        $options[$product_sku] = $markup;
+
+        // Add the line items indexed by sku to the products array so we can add
+        // it to our close element.
+        $line_items[$product_sku] = $line_item_wrapper;
+      }
+    }
+  }
+
+  // Add a checkboxes element that will display each product in the order.
+  $form['commerce_pos_return_select_item_modal']['modal']['return_items'] = array(
+    '#title' => t('Check the items that need to be returned'),
+    '#type' => 'checkboxes',
+    '#options' => $options,
+    '#weight' => 0,
+  );
+
+  // Add our close button which will add all the items that were selected to
+  // be returned to the return transaction.
+  $form['commerce_pos_return_select_item_modal']['modal']['add'] = array(
+    '#type' => 'button',
+    '#value' => t('Add'),
+    '#ajax' => array(
+      'callback' => 'commerce_pos_transaction_wrapper_js',
+      'wrapper' => 'commerce-pos-sale-wrapper',
+    ),
+    '#element_key' => 'return-items-add',
+    '#name' => 'return-items-add',
+    '#line_items' => $line_items,
+    '#weight' => 1,
+  );
 }
