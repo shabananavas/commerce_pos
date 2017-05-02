@@ -190,18 +190,19 @@ function commerce_pos_currency_view_denominations($currency_id) {
 
     // Now, get the denominations for this denomination type.
     $denominations = commerce_pos_currency_denomination_get_denominations(array($denomination_type_info->currency_code));
+
+    $output .= t('<h3>Current Denominations for Type @type</h3>', array(
+      '@type' => $denomination_type_info->currency_code
+    ));
+
+    $headers = array(
+      'Title' => t('Title'),
+      'Amount' => t('Amount'),
+      'Options' => t('Options'),
+    );
+    $rows = array();
+
     if (!empty($denominations)) {
-      $output .= t('<h3>Current Denominations for Type @type</h3>', array(
-        '@type' => $denomination_type_info->currency_code
-      ));
-
-      $headers = array(
-        'Title' => t('Title'),
-        'Amount' => t('Amount'),
-        'Options' => t('Options'),
-      );
-      $rows = array();
-
       foreach ($denominations[$denomination_type_info->currency_id] as $denomination) {
         $row = array();
         $row[] = $denomination->denomination_title;
@@ -209,20 +210,18 @@ function commerce_pos_currency_view_denominations($currency_id) {
         $row[] = l(t('delete'), 'admin/commerce/config/pos/denomination-type/' . $currency_id . '/denomination/' . $denomination->denomination_id . '/delete');
         $rows[] = $row;
       }
+    }
 
-      $output .= theme('table', array(
-          'header' => $headers,
-          'rows' => $rows,
-          'sticky' => TRUE,
-          'attributes' => array(
-            'class' => array('commerce-pos-current-denominations')
-          )
-        )
-      );
-    }
-    else {
-      $output .= t('<p>Currently, no denominations have been added for this denomination type.</p>');
-    }
+    $output .= theme('table', array(
+        'header' => $headers,
+        'rows' => $rows,
+        'sticky' => TRUE,
+        'attributes' => array(
+          'class' => array('commerce-pos-current-denominations')
+        ),
+        'empty' => t('Currently, no denominations have been added for this type.'),
+      )
+    );
   }
   else {
     $output .= t('<p>Invalid denomination type.</p>');
