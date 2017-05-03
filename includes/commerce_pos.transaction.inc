@@ -210,6 +210,7 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
       '#ajax' => $wrapper_ajax,
       '#element_key' => 'do-order-search',
       '#name' => 'do-order-search',
+      '#element_validate' => array('_commerce_pos_order_search_validate'),
     );
   }
 
@@ -752,6 +753,8 @@ function commerce_pos_transaction_ajax_check(&$form, &$form_state) {
   if (isset($form_state['triggering_element'])) {
     $triggering_element = $form_state['triggering_element'];
 
+    // TODO: Get rid of this 'if' here, and use the exchange-item
+    // case below.
     // If an exchange item was selected.
     if ($triggering_element['#parents'][0] == 'return_items') {
       $form_state['exchange_item'] = $triggering_element['#value'];
@@ -850,6 +853,11 @@ function commerce_pos_transaction_ajax_check(&$form, &$form_state) {
           break;
 
         case 'do-order-search':
+          // Make sure user is not adding items from different orders by storing
+          // the order number.
+          $form_state['exchange_order_id'] = $form_state['input']['order_search']['input'];
+
+          // Now, load the order from what the user entered.
           $order = commerce_order_load_by_number($form_state['input']['order_search']['input']);
           // If we have got a valid order display the item in the order in a
           // modal.
@@ -876,7 +884,7 @@ function commerce_pos_transaction_ajax_check(&$form, &$form_state) {
           }
 
           break;
-
+        // TODO: Figure out why this is not triggering.
         case 'exchange-item':
           commerce_pos_return_select_exchange_item_popup($form, $form_state);
           break;
@@ -1120,4 +1128,14 @@ function commerce_pos_return_select_exchange_item_popup(&$form, &$form_state) {
   );
 
   return $form;
+}
+
+/**
+ * Validate function for searching by an order number.
+ */
+function _commerce_pos_order_search_validate($form, &$form_state) {
+  // Don't let the user add items from multiple orders.
+  if (isset($form_state['exchange_order_id']) && $form_state['exchange_order_id'] != $form_state['input']['order_search']['input']) {
+    form_set_error('order_search][input', t('You cannot add items from multiple orders.'));
+  }
 }
