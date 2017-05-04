@@ -183,7 +183,7 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
       '#tree' => TRUE,
       '#suffix' => '</div>',
     );
-    
+
     $form['order_search']['input'] = array(
       '#type' => 'textfield',
       '#title' => '',
@@ -939,8 +939,13 @@ function _commerce_pos_override_confirm_validate($form, &$form_state) {
 }
 
 /**
- * Returns a modal form displaying each item in an order along with a checkbox
- * for the user to add that item to the return transaction.
+ * Returns a modal form displaying each item in an order.
+ *
+ * This popup shows a checkbox next to each item for the user to add that item
+ * to the return transaction.
+ *
+ * @param $order
+ *   The order entity.
  */
 function commerce_pos_return_select_item_popup(&$form, &$form_state, $order) {
 
@@ -957,7 +962,7 @@ function commerce_pos_return_select_item_popup(&$form, &$form_state, $order) {
   // Go through each item in the order and generate the html for the items
   // display.
   foreach (entity_metadata_wrapper('commerce_order', $order)->commerce_line_items as $delta => $line_item_wrapper) {
-    if (in_array($line_item_wrapper->type->value(), commerce_product_line_item_types())) {
+    if (isset($line_item_wrapper->type) && in_array($line_item_wrapper->type->value(), commerce_product_line_item_types())) {
 
       // Load the product.
       $product_sku = $line_item_wrapper->commerce_product->sku->value();
