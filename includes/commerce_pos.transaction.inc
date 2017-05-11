@@ -177,11 +177,25 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
   // Let's add an order search textfield if we're in a return transaction so the
   // user could easily pick out which items from the order needs to be returned.
   if ($return) {
+    $form['search_type'] = array(
+      '#type' => radios,
+      '#options' => array(
+        'product' => t('Search or scan product'),
+        'order' => t('Search for Order ID'),
+      ),
+      '#default_value' => 'product',
+    );
+
     $form['order_search'] = array(
       '#type' => 'container',
       '#prefix' => '<div id="commerce-pos-return-order-search">',
       '#tree' => TRUE,
       '#suffix' => '</div>',
+      '#states' => array(
+        'visible' => array(
+          ':input[name="search_type"]' => array('value' => 'order'),
+        ),
+      ),
     );
 
     $form['order_search']['input'] = array(
@@ -198,10 +212,11 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
 
     $form['order_search']['search'] = array(
       '#type' => 'button',
-      '#value' => t('Return items from this order'),
+      '#value' => t('Search'),
       '#ajax' => $wrapper_ajax,
       '#element_key' => 'do-order-search',
       '#name' => 'do-order-search',
+      '#attributes' => array('class' => array('blue')),
     );
   }
 
@@ -233,6 +248,11 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
       'placeholder' => t('Product Search'),
     ),
     '#element_validate' => array('_commerce_pos_transaction_validate_product_input'),
+    '#states' => array(
+      'visible' => array(
+        ':input[name="search_type"]' => array('value' => 'product'),
+      ),
+    ),
   );
 
   $form['product_search']['product_sku'] = array(

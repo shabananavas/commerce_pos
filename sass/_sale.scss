@@ -586,7 +586,7 @@
     .form-submit {
       display: inline-block;
       position: relative;
-      top: -35px;
+      top: -33px;
     }
   }
 
@@ -615,5 +615,26 @@
         }
       }
     }
+  }
+
+  #edit-search-type {
+    .form-item {
+      display: inline-block;
+      width: 190px;
+
+      input {
+        width: 15px;
+      }
+
+      label {
+        display: inline-block;
+        vertical-align: text-bottom;
+        font-size: 14px;
+      }
+    }
+  }
+
+  input#edit-order-search-input {
+    width: 320px;
   }
 }
