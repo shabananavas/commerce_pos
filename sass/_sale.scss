@@ -616,6 +616,27 @@
       }
     }
   }
+
+  .form-radios {
+    .form-item {
+      display: inline-block;
+      width: 190px;
+
+      input {
+        width: 15px;
+      }
+
+      label {
+        display: inline-block;
+        vertical-align: text-bottom;
+        font-size: 14px;
+      }
+    }
+  }
+
+  input#edit-order-search-input {
+    width: 320px;
+  }
 }
 
 .ui-autocomplete {

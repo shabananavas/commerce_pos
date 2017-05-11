@@ -157,7 +157,7 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
       '#markup' => '<div class="messages warning">'
         . t('Allowed product types have not been configured for POS transactions.
         Click !here to add product types.', array(
-          '!here' => l('here', 'admin/commerce/config/pos/settings')
+          '!here' => l(t('here'), 'admin/commerce/config/pos/settings')
         ))
         . '</div>',
     );
@@ -183,15 +183,30 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
     unset($form_state['lookup_result']);
   }
 
-  // Let's add a order search textfield if we're in a return transaction so the
+  // Let's add an order search textfield if we're in a return transaction so the
   // user could easily pick out which items from the order needs to be returned.
   if ($return || $exchange) {
+    $form['search_type'] = array(
+      '#type' => 'radios',
+      '#options' => array(
+        'product' => t('Search or scan product'),
+        'order' => t('Search for Order ID'),
+      ),
+      '#default_value' => 'product',
+    );
+
     $form['order_search'] = array(
       '#type' => 'container',
       '#prefix' => '<div id="commerce-pos-return-order-search">',
       '#tree' => TRUE,
       '#suffix' => '</div>',
+      '#states' => array(
+        'visible' => array(
+          ':input[name="search_type"]' => array('value' => 'order'),
+        ),
+      ),
     );
+
     $form['order_search']['input'] = array(
       '#type' => 'textfield',
       '#title' => '',
@@ -206,11 +221,11 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
 
     $form['order_search']['search'] = array(
       '#type' => 'button',
-      '#value' => t('Return items from this order'),
+      '#value' => t('Search'),
       '#ajax' => $wrapper_ajax,
       '#element_key' => 'do-order-search',
       '#name' => 'do-order-search',
-      '#element_validate' => array('_commerce_pos_order_search_validate'),
+      '#attributes' => array('class' => array('blue')),
     );
   }
 
@@ -219,7 +234,7 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
   );
 
   // Add the onboarding text if the order is empty.
-  if (empty($order_wrapper) && !($exchange)) {
+  if (empty($order_wrapper)) {
     $form['product_search']['onboarding_text'] = array(
       '#type' => 'markup',
       '#markup' => '<div class="commerce-pos-search-onboarding-message">' . t("<strong>Start your @txn_type:</strong> scan barcode or use product search", array(
@@ -228,35 +243,38 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
     );
   }
 
-  if (!($exchange)) {
-    $form['product_search']['input'] = array(
-      '#type' => 'textfield',
-      '#title' => t('product search'),
-      '#title_display' => 'after',
-      '#size' => 60,
-      '#description' => t('Search by SKU or product title, start typing to begin your search.'),
-      '#attributes' => array(
-        'class' => array(
-          'commerce-pos-product-autocomplete',
-          'commerce-pos-product-search',
-        ),
-        'placeholder' => t('Product Search'),
+  $form['product_search']['input'] = array(
+    '#type' => 'textfield',
+    '#title' => t('product search'),
+    '#title_display' => 'after',
+    '#size' => 60,
+    '#description' => t('Search by SKU or product title, start typing to begin your search.'),
+    '#attributes' => array(
+      'class' => array(
+        'commerce-pos-product-autocomplete',
+        'commerce-pos-product-search',
       ),
-      '#element_validate' => array('_commerce_pos_transaction_validate_product_input'),
-    );
+      'placeholder' => t('Product Search'),
+    ),
+    '#element_validate' => array('_commerce_pos_transaction_validate_product_input'),
+    '#states' => array(
+      'visible' => array(
+        ':input[name="search_type"]' => array('value' => 'product'),
+      ),
+    ),
+  );
 
-    $form['product_search']['product_sku'] = array(
-      '#type' => 'textfield',
-      '#title' => NULL,
-      '#ajax' => $wrapper_ajax,
-      '#attributes' => array(
-        'class' => array('commerce-pos-product-sku-input'),
-      ),
-      '#element_key' => 'product-sku',
-      '#prefix' => '<div class="element-invisible">',
-      '#suffix' => '</div>',
-    );
-  }
+  $form['product_search']['product_sku'] = array(
+    '#type' => 'textfield',
+    '#title' => NULL,
+    '#ajax' => $wrapper_ajax,
+    '#attributes' => array(
+      'class' => array('commerce-pos-product-sku-input'),
+    ),
+    '#element_key' => 'product-sku',
+    '#prefix' => '<div class="element-invisible">',
+    '#suffix' => '</div>',
+  );
 
   if (!empty($order_wrapper)) {
     $form['line_items'] = array(
@@ -294,7 +312,6 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
         if (is_array($stock)) {
           $stock = $stock[0];
         }
-
 
         if (is_numeric($stock) && $stock < 1) {
           $out_of_stock = TRUE;
@@ -619,11 +636,14 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
   if ($return) {
     $pay_value = t('Refund');
   }
-  else if ($exchange) {
-    if ($order_total_amount < 0) {
-      $pay_value = t('Refund');
+  else {
+    if ($exchange) {
+      if (isset($order_total_amount) && $order_total_amount < 0) {
+        $pay_value = t('Refund');
+      }
     }
   }
+
   $transaction_options['actions']['pay'] = array(
     '#type' => 'submit',
     '#value' => $pay_value . $button_keybind_text,
@@ -753,8 +773,6 @@ function commerce_pos_transaction_ajax_check(&$form, &$form_state) {
   if (isset($form_state['triggering_element'])) {
     $triggering_element = $form_state['triggering_element'];
 
-    // TODO: Get rid of this 'if' here, and use the exchange-item
-    // case below.
     // If an exchange item was selected.
     if ($triggering_element['#parents'][0] == 'return_items') {
       $form_state['exchange_item'] = $triggering_element['#value'];
@@ -780,6 +798,7 @@ function commerce_pos_transaction_ajax_check(&$form, &$form_state) {
 
           if (!empty($product_sku) && $product = commerce_product_load_by_sku($product_sku)) {
             // If we're exchanging for another item.
+            dpm($transaction);
             if ($transaction->type == 'exchange') {
               // First, add the product that we're exchanging for into an array.
               $form_state['exchange_for_item'][$form_state['values']['product_sku']] = $form_state['exchange_item'];
@@ -853,11 +872,6 @@ function commerce_pos_transaction_ajax_check(&$form, &$form_state) {
           break;
 
         case 'do-order-search':
-          // Make sure user is not adding items from different orders by storing
-          // the order number.
-          $form_state['exchange_order_id'] = $form_state['input']['order_search']['input'];
-
-          // Now, load the order from what the user entered.
           $order = commerce_order_load_by_number($form_state['input']['order_search']['input']);
           // If we have got a valid order display the item in the order in a
           // modal.
@@ -879,14 +893,17 @@ function commerce_pos_transaction_ajax_check(&$form, &$form_state) {
               // We're sending the actual price the customer paid to the
               // addProduct() function, so that price will be used in the
               // transaction instead of the product price.
-              $transaction->addProduct($form_state['triggering_element']['#line_items'][$value]->commerce_product->value(), 1, TRUE, $form_state['triggering_element']['#line_items'][$value]->commerce_unit_price->value()['amount']);
+              $price = $form_state['triggering_element']['#line_items'][$value]->commerce_unit_price->value();
+              $transaction->addProduct($form_state['triggering_element']['#line_items'][$value]->commerce_product->value(), 1, TRUE, $price['amount']);
             }
           }
 
           break;
-        // TODO: Figure out why this is not triggering.
+
+        // TODO: Figure out why this isn't triggering.
         case 'exchange-item':
           commerce_pos_return_select_exchange_item_popup($form, $form_state);
+
           break;
 
         default:
@@ -976,8 +993,7 @@ function commerce_pos_transaction_pay_submit($form, &$form_state) {
 }
 
 /**
- * Custom ajax callback for the 'Override' button when a product does not have
- * sufficient stock.
+ * Custom ajax callback for the 'Override' button when a product does not have sufficient stock.
  *
  * We just want to remove the entire wrapper div and go on as usual if they
  * click on 'Override'.
@@ -1128,14 +1144,4 @@ function commerce_pos_return_select_exchange_item_popup(&$form, &$form_state) {
   );
 
   return $form;
-}
-
-/**
- * Validate function for searching by an order number.
- */
-function _commerce_pos_order_search_validate($form, &$form_state) {
-  // Don't let the user add items from multiple orders.
-  if (isset($form_state['exchange_order_id']) && $form_state['exchange_order_id'] != $form_state['input']['order_search']['input']) {
-    form_set_error('order_search][input', t('You cannot add items from multiple orders.'));
-  }
 }
