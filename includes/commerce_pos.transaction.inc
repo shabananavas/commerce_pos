@@ -178,7 +178,7 @@ function commerce_pos_transaction_form(&$form, &$form_state, $transaction_type) 
   // user could easily pick out which items from the order needs to be returned.
   if ($return) {
     $form['search_type'] = array(
-      '#type' => radios,
+      '#type' => 'radios',
       '#options' => array(
         'product' => t('Search or scan product'),
         'order' => t('Search for Order ID'),
